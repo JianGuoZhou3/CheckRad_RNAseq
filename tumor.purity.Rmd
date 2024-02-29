@@ -1,0 +1,154 @@
+---
+title: "tumor purity"
+author: "Jian-Guo Zhou"
+date: '2022-06-04'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+#####tumor purity#######
+```{r}
+# pretreatment 77ts 
+# tumor purity (pathology) vs estimate
+load("~/Downloads/multiclass/clin.77ts.3.PPR.Multiclass.Rdata")
+load("~/Downloads/multiclass/IOBR.deconvolution.mat_tpm.norm_featurecounts.all.CheckRad.Rdata")
+subt$tumor.purity.p<-subt$Tumor.Area..mm2./(subt$Tumor.Area..mm2.+subt$Stroma.area..mm2.)*100
+library(stringr)
+expr.tme_combine$ID<-str_replace_all(expr.tme_combine$ID,"[.]","-")
+rownames(expr.tme_combine)<-expr.tme_combine$ID
+expr.tme_combine1<-expr.tme_combine[rownames(expr.tme_combine) %in% subt$ID,]
+subt<-subt[order(subt$ID),]
+expr.tme_combine1<-expr.tme_combine1[order(expr.tme_combine1$ID),]
+subt$tumor.purity.e<-expr.tme_combine1$TumorPurity_estimate*100
+# corr
+# correlation
+library(corrplot)
+library(ggplot2)
+library(ggplot2)
+cor(subt$tumor.purity.p,subt$tumor.purity.e,method = "pearson")
+cor.test(subt$tumor.purity.p,subt$tumor.purity.e)
+ggplot(subt,aes(x=tumor.purity.p,y=tumor.purity.e))+ geom_point(size=1,shape=15)+geom_smooth(method=lm)
+# plot(subt$tumor.purity.p,subt$tumor.purity.e)
+# M = cor(mtcars)
+# corrplot(M, order = 'hclust', addrect = 2)
+```
+
+#####stromal score#######
+```{r}
+# pretreatment 77ts 
+# StromalScore(pathology) vs estimate and xcell
+load("~/Downloads/multiclass/clin.77ts.3.PPR.Multiclass.Rdata")
+load("~/Downloads/multiclass/IOBR.deconvolution.mat_tpm.norm_featurecounts.all.CheckRad.Rdata")
+subt$Stroma.p<-subt$Stroma.area..mm2./(subt$Tumor.Area..mm2.+subt$Stroma.area..mm2.)*100
+library(stringr)
+expr.tme_combine$ID<-str_replace_all(expr.tme_combine$ID,"[.]","-")
+rownames(expr.tme_combine)<-expr.tme_combine$ID
+expr.tme_combine1<-expr.tme_combine[rownames(expr.tme_combine) %in% subt$ID,]
+subt<-subt[order(subt$ID),]
+expr.tme_combine1<-expr.tme_combine1[order(expr.tme_combine1$ID),]
+subt$StromalScore.e<-expr.tme_combine1$StromalScore_estimate
+subt$StromalScore.x<-expr.tme_combine1$StromaScore_xCell
+# corr
+# correlation
+library(corrplot)
+library(ggplot2)
+library(ggplot2)
+cor(subt$Stroma.p,subt$StromalScore.e,method = "pearson")
+cor.test(subt$Stroma.p,subt$StromalScore.e)
+ggplot(subt,aes(x=Stroma.p,y=StromalScore.e))+ geom_point(size=1,shape=15)+geom_smooth(method=lm)
+# xcell
+cor(subt$Stroma.p,subt$StromalScore.x,method = "pearson")
+cor.test(subt$Stroma.p,subt$StromalScore.x)
+ggplot(subt,aes(x=Stroma.p,y=StromalScore.x))+ geom_point(size=1,shape=15)+geom_smooth(method=lm)
+
+# plot(subt$tumor.purity.p,subt$tumor.purity.e)
+# M = cor(mtcars)
+# corrplot(M, order = 'hclust', addrect = 2)
+```
+
+
+#####Immunescore (CD8)#######
+```{r}
+# pretreatment 77ts 
+# Immunescore(pathology) vs estimate
+load("~/Downloads/multiclass/clin.77ts.3.PPR.Multiclass.Rdata")
+load("~/Downloads/multiclass/IOBR.deconvolution.mat_tpm.norm_featurecounts.all.CheckRad.Rdata")
+# stroma.area.mm2 is 8.9 = stroma area in mm2
+# CD8.mm2.Stroma.area. is 3007 = CD8 count per mm2 stroma area
+library(stringr)
+expr.tme_combine$ID<-str_replace_all(expr.tme_combine$ID,"[.]","-")
+rownames(expr.tme_combine)<-expr.tme_combine$ID
+expr.tme_combine1<-expr.tme_combine[rownames(expr.tme_combine) %in% subt$ID,]
+subt<-subt[order(subt$ID),]
+expr.tme_combine1<-expr.tme_combine1[order(expr.tme_combine1$ID),]
+subt$ImmuneScore_estimate<-expr.tme_combine1$ImmuneScore_estimate
+subt$ImmuneScore_xCell<-expr.tme_combine1$ImmuneScore_xCell
+# subt$CD8.mm2..Stroma.area.
+# subt$CD8.mm2..Tumor.Area.
+# subt$CD8.mm2..Tumor.Stroma.Area.
+####corr ImmuneScore_estimate ####
+# correlation CD8.mm2..Stroma.area.
+library(corrplot)
+library(ggplot2)
+library(ggplot2)
+cor(subt$CD8.mm2..Stroma.area.,subt$ImmuneScore_estimate,method = "pearson")
+cor.test(subt$CD8.mm2..Stroma.area.,subt$ImmuneScore_estimate)
+ggplot(subt,aes(x=CD8.mm2..Stroma.area.,y=ImmuneScore_estimate))+ geom_point(size=1,shape=15)+geom_smooth(method=lm)
+# correlation CD8.mm2..Tumor.Area.
+library(corrplot)
+library(ggplot2)
+library(ggplot2)
+cor(subt$CD8.mm2..Tumor.Area.,subt$ImmuneScore_estimate,method = "pearson")
+cor.test(subt$CD8.mm2..Tumor.Area.,subt$ImmuneScore_estimate)
+ggplot(subt,aes(x=CD8.mm2..Tumor.Area.,y=ImmuneScore_estimate))+ geom_point(size=1,shape=15)+geom_smooth(method=lm)
+
+# correlation CD8.mm2..Tumor.Stroma.Area.
+library(corrplot)
+library(ggplot2)
+library(ggplot2)
+cor(subt$CD8.mm2..Tumor.Stroma.Area.,subt$ImmuneScore_estimate,method = "pearson")
+cor.test(subt$CD8.mm2..Tumor.Stroma.Area.,subt$ImmuneScore_estimate)
+ggplot(subt,aes(x=CD8.mm2..Tumor.Stroma.Area.,y=ImmuneScore_estimate))+ geom_point(size=1,shape=15)+geom_smooth(method=lm)
+
+####corr ImmuneScore_xCell ####
+# correlation CD8.mm2..Stroma.area.
+library(corrplot)
+library(ggplot2)
+library(ggplot2)
+cor(subt$CD8.mm2..Stroma.area.,subt$ImmuneScore_xCell,method = "pearson")
+cor.test(subt$CD8.mm2..Stroma.area.,subt$ImmuneScore_xCell)
+ggplot(subt,aes(x=CD8.mm2..Stroma.area.,y=ImmuneScore_xCell))+ geom_point(size=1,shape=15)+geom_smooth(method=lm)
+# correlation CD8.mm2..Tumor.Area.
+library(corrplot)
+library(ggplot2)
+library(ggplot2)
+cor(subt$CD8.mm2..Tumor.Area.,subt$ImmuneScore_xCell,method = "pearson")
+cor.test(subt$CD8.mm2..Tumor.Area.,subt$ImmuneScore_xCell)
+ggplot(subt,aes(x=CD8.mm2..Tumor.Area.,y=ImmuneScore_xCell))+ geom_point(size=1,shape=15)+geom_smooth(method=lm)
+
+# correlation CD8.mm2..Tumor.Stroma.Area.
+library(corrplot)
+library(ggplot2)
+library(ggplot2)
+cor(subt$CD8.mm2..Tumor.Stroma.Area.,subt$ImmuneScore_xCell,method = "pearson")
+cor.test(subt$CD8.mm2..Tumor.Stroma.Area.,subt$ImmuneScore_xCell)
+ggplot(subt,aes(x=CD8.mm2..Tumor.Stroma.Area.,y=ImmuneScore_xCell))+ geom_point(size=1,shape=15)+geom_smooth(method=lm)
+```
+
+## ave 的tumor purity情况，两种方法 [0=100%] 两个 col pathological or deconvalution.
+## immnue score 包含肿瘤细胞与免疫细胞的多寡。
+## 我们的score是否是independent！
+## 取样或者是IO的治疗导致？
+## 计算的score与deconvalution的correlation，解释score的意义。
+
+##还有就是validation, 别人的cohort做验证的时候做不了shift，就看PCR是否能分出来
+## 能做shift，尽量看一眼

@@ -1,0 +1,289 @@
+---
+title: "clin.factor.boxplot"
+author: "Jian-Guo Zhou"
+date: "6/1/2022"
+output: html_document
+---
+
+###77ts.3.PPR ######
+```{r}
+load("~/Downloads/multiclass/clin.77ts.3.PPR.Multiclass.Rdata")
+table(subt$PPR)
+# NPR PCR PPR 
+#  15  42  20 
+id.sig<-colnames(subt)[c(21:24,30:35,53)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","PPR",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","PPR","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$PPR<-factor(expr.sig.plot$PPR,levels = c("PCR", "PPR", "NPR"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+p2 <- ggplot(expr.sig.plot, aes(x=sig, y=score, fill=PPR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "Pathologic factors for PPR at pretreatment.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+```{r}
+# for (i in 1:length(id.sig)) {
+#   marker<-id.sig[i]
+#   a<-expr.sig.plot[expr.sig.plot$sig==marker,]
+#   p <- ggboxplot(a, x = "PPR", y = "score",
+#                  color = "PPR", palette = "jco",title=marker,
+#                  add = "jitter")+ stat_compare_means()#  Add p-value
+#   
+#   # Boxplots are automatically dodged when any aesthetic is a factor
+#   # wilcox.test/t.test
+#   
+#   ggsave(p, filename = paste0(marker, ".CheckRad_CD8", "-PPR-", 
+#                               "ggplot2.","pdf"), width = 6, height = 6)
+# }
+```
+
+###77ts.3.MFP ######
+```{r}
+load("~/Downloads/multiclass/clin.77ts.3.PPR.Multiclass.Rdata")
+table(subt$MFP1)
+# D  F IE 
+# 21 30 26 
+id.sig<-colnames(subt)[c(21:24,30:35,53)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","MFP1",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","MFP1","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$MFP1<-factor(expr.sig.plot$MFP1,levels = c("IE", "F", "D"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+p2 <- ggplot(expr.sig.plot, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "Pathologic factors for MFP1 at pretreatment.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+###77ts.3.cr.MFP ######
+```{r}
+load("~/Downloads/multiclass/clin.77ts.3.PPR.Multiclass.Rdata")
+table(subt$cr.MFP)
+ # non_pCR.D  non_pCR.F non_pCR.IE      pCR.D      pCR.F     pCR.IE 
+ #        13         17          5          8         13         21 
+id.sig<-colnames(subt)[c(21:24,30:35,53)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","cr.MFP",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","cr.MFP","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$cr.MFP<-factor(expr.sig.plot$cr.MFP,levels = c("pCR.IE", "pCR.F", "pCR.D","non_pCR.IE","non_pCR.F","non_pCR.D"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+p2 <- ggplot(expr.sig.plot, aes(x=sig, y=score, fill=cr.MFP)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "Pathologic factors for cr.MFP at pretreatment.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+
+
+
+###32ts.3.cr.MFP pre ######
+```{r}
+load("~/Downloads/multiclass/clin.32pts.pre2post.5MFP.pre.Multiclass.Rdata")
+subt<-subt[order(subt$MFP1),]
+subt$Vital_tumor_cluster<-ifelse(subt$`Vital tumor_%.me`==0,"pCR",
+                                 ifelse(subt$`Vital tumor_%.me`=="N/A","N/A",
+                                   ifelse(subt$`Vital tumor_%.me`>0.5,">50",
+                                          ifelse(subt$`Vital tumor_%.me`>0.25,"25_50",
+                                                 ifelse(subt$`Vital tumor_%.me`>0,"<25",subt$`Vital tumor_%.me`)))))
+subt$MFP.post1<-ifelse(subt$MFP.post=="IE/F","IE",subt$MFP.post)
+
+table(subt$MFP1)
+# D2F  D2IE   F2F  F2IE IE2IE 
+#     4     9     8     7     4 
+id.sig<-colnames(subt)[c(19:28,31,32)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","MFP1",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","MFP1","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$MFP1<-factor(expr.sig.plot$MFP1,levels=c("IE2IE", "F2IE", "D2IE","F2F","D2F"))
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+p2 <- ggplot(expr.sig.plot, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "Pathologic factors for MFP switch resid pre.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+###32ts.3.cr.MFP post ######
+```{r}
+load("~/Downloads/multiclass/clin.32pts.pre2post.5MFP.pre.Multiclass.Rdata")
+subt1<-subt
+load("~/Downloads/multiclass/clin.32pts.pre2post.5MFP.post.Multiclass.Rdata")
+subt<-subt[order(subt$MFP1),]
+subt$Vital_tumor_cluster<-ifelse(subt$`Vital tumor_%.me`==0,"pCR",
+                                 ifelse(subt$`Vital tumor_%.me`=="N/A","N/A",
+                                   ifelse(subt$`Vital tumor_%.me`>0.5,">50",
+                                          ifelse(subt$`Vital tumor_%.me`>0.25,"25_50",
+                                                 ifelse(subt$`Vital tumor_%.me`>0,"<25",subt$`Vital tumor_%.me`)))))
+subt$MFP.post1<-ifelse(subt$MFP.post=="IE/F","IE",subt$MFP.post)
+
+table(subt$MFP1)
+# D2F  D2IE   F2F  F2IE IE2IE 
+#     4     9     8     7     4 
+id.sig<-colnames(subt)[c(19:28,31,32)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","MFP1",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","MFP1","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$MFP1<-factor(expr.sig.plot$MFP1,levels=c("IE2IE", "F2IE", "D2IE","F2F","D2F"))
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+p2 <- ggplot(expr.sig.plot, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "Pathologic factors for MFP switch resid post.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+
+
+###32ts.3.cr.MFP post2pre ######
+```{r}
+load("~/Downloads/multiclass/clin.32pts.pre2post.5MFP.pre.Multiclass.Rdata")
+subt1<-subt
+load("~/Downloads/multiclass/clin.32pts.pre2post.5MFP.post.Multiclass.Rdata")
+subt<-subt[order(subt$MFP1),]
+subt$Vital_tumor_cluster<-ifelse(subt$`Vital tumor_%.me`==0,"pCR",
+                                 ifelse(subt$`Vital tumor_%.me`=="N/A","N/A",
+                                   ifelse(subt$`Vital tumor_%.me`>0.5,">50",
+                                          ifelse(subt$`Vital tumor_%.me`>0.25,"25_50",
+                                                 ifelse(subt$`Vital tumor_%.me`>0,"<25",subt$`Vital tumor_%.me`)))))
+subt$MFP.post1<-ifelse(subt$MFP.post=="IE/F","IE",subt$MFP.post)
+
+table(subt$MFP1)
+# D2F  D2IE   F2F  F2IE IE2IE 
+#     4     9     8     7     4 
+id.sig<-colnames(subt)[c(19:28,31,32)]
+subt2<-subt
+subt[,c(19:28,31,32)]<-subt2[,c(19:28,31,32)]-subt1[,c(19:28,31,32)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","MFP1",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","MFP1","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$MFP1<-factor(expr.sig.plot$MFP1,levels=c("IE2IE", "F2IE", "D2IE","F2F","D2F"))
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+p2 <- ggplot(expr.sig.plot, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "Pathologic factors for MFP switch resid post2pre.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+

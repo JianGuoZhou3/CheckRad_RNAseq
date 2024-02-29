@@ -1,0 +1,866 @@
+---
+title: "published IO signatures"
+author: "Jian-Guo Zhou"
+date: "6/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+## TIL TIL (Cytolytic activity)
+```{r}
+# defined as the log- average (geometric mean) of GZMA and PRF1 expression in transcripts per million (TPM)
+# install.packages("tbrf")
+# library(tbrf)
+gm_mean = function(x, na.rm=TRUE, zero.propagate = FALSE){ 
+  if(any(x < 0, na.rm = TRUE)){ return(NaN) }
+  if(zero.propagate){if(any(x == 0, na.rm = TRUE)){ return(0) }
+    exp(mean(log(x), na.rm = na.rm))
+    } else { exp(sum(log(x[x > 0]),na.rm=na.rm) / length(x)) } }
+
+load("~/Downloads/multiclass/CheckRad.mat_tpm.norm_featurecounts.all.Rdata")
+tpm<-data.frame(t(mat_tpm.norm_featurecounts.all)) 
+rownames(tpm)<-colnames(mat_tpm.norm_featurecounts.all)
+colnames(tpm)<-rownames(mat_tpm.norm_featurecounts.all)
+Cytolytic.activity<-tpm[,c("GZMA","PRF1")]
+Cytolytic.activity$TIL<-Cytolytic.activity$GZMA
+for (i in 1:124) {
+  Cytolytic.activity[i,3]<-gm_mean(tpm[i,c("GZMA","PRF1")])
+}
+
+```
+
+## published_IO_signatures_geneset_list
+```{r}
+library(readxl)
+published_IO_signatures_geneset_list <- read_excel("published IO signatures geneset list.xlsx")
+published_IO_signatures_geneset_list<-published_IO_signatures_geneset_list[!is.na(published_IO_signatures_geneset_list$`Gene Signature`),]
+library(GSVA)
+signature1=published_IO_signatures_geneset_list[1:37,-c(2:5)]
+signature1<-data.frame(t(signature1))
+# rownames(signature1)<-as.character(signature1$Gene.Signature)
+signature<-as.list(signature1[-1,])
+for (i in 1:37) {
+signature[[i]]<-na.omit(signature[[i]])
+  }
+names(signature)<-signature1[1,]
+save(signature,file = "published_IO_signatures.Rdata")
+mini_gene_count=2
+expr<-as.matrix(mat_tpm.norm_featurecounts.all)
+load("published_IO_signatures.Rdata")
+load("CheckRad.mat_tpm.norm_featurecounts.all.Rdata")
+expr<-data.frame(mat_tpm.norm_featurecounts.all)
+#1.gsva gsva
+mini_gene_count=1
+IO_signature_gsva.gsva<-GSVA::gsva(as.matrix(expr), signature, method = "gsva", 
+                                   kcdf = "Gaussian", min.sz = mini_gene_count, ssgsea.norm = T, 
+                                   parallel.sz = 1L)
+IO_signature_gsva.gsva1<-t(IO_signature_gsva.gsva)
+IO_signature_gsva.gsva1<-data.frame(IO_signature_gsva.gsva1)
+IO_signature_gsva.gsva1$ID<-rownames(IO_signature_gsva.gsva1)
+IO_signature_gsva.gsva1<-IO_signature_gsva.gsva1[,c(ncol(IO_signature_gsva.gsva1),1:(ncol(IO_signature_gsva.gsva1)-1))]
+# 2. calculate_sig_score_ssgsea
+IO_signature_ssgsea.gsva<-GSVA::gsva(as.matrix(expr), signature, method = "ssgsea", 
+                                     kcdf = "Gaussian", min.sz = mini_gene_count, ssgsea.norm = T, 
+                                     parallel.sz = 1L)
+IO_signature_ssgsea.gsva1<-t(IO_signature_ssgsea.gsva)
+IO_signature_ssgsea.gsva1<-data.frame(IO_signature_ssgsea.gsva1)
+IO_signature_ssgsea.gsva1$ID<-rownames(IO_signature_ssgsea.gsva1)
+IO_signature_ssgsea.gsva1<-IO_signature_ssgsea.gsva1[,c(ncol(IO_signature_ssgsea.gsva1),1:(ncol(IO_signature_ssgsea.gsva1)-1))]
+#3.gsva zscore
+IO_signature_zscore.gsva<-GSVA::gsva(as.matrix(expr), signature, method = "zscore", 
+                                     kcdf = "Gaussian", min.sz = mini_gene_count, ssgsea.norm = T, 
+                                     parallel.sz = 1L)
+IO_signature_zscore.gsva1<-t(IO_signature_zscore.gsva)
+IO_signature_zscore.gsva1<-data.frame(IO_signature_zscore.gsva1)
+IO_signature_zscore.gsva1$ID<-rownames(IO_signature_zscore.gsva1)
+IO_signature_zscore.gsva1<-IO_signature_zscore.gsva1[,c(ncol(IO_signature_zscore.gsva1),1:(ncol(IO_signature_zscore.gsva1)-1))]
+#4.gsva plage
+IO_signature_plage.gsva<-GSVA::gsva(as.matrix(expr), signature, method = "plage", 
+                                    kcdf = "Gaussian", min.sz = mini_gene_count, ssgsea.norm = T, 
+                                    parallel.sz = 1L)
+IO_signature_plage.gsva1<-t(IO_signature_plage.gsva)
+IO_signature_plage.gsva1<-data.frame(IO_signature_plage.gsva1)
+IO_signature_plage.gsva1$ID<-rownames(IO_signature_plage.gsva1)
+IO_signature_plage.gsva1<-IO_signature_plage.gsva1[,c(ncol(IO_signature_plage.gsva1),1:(ncol(IO_signature_plage.gsva1)-1))]
+save(IO_signature_gsva.gsva1,IO_signature_plage.gsva1,IO_signature_zscore.gsva1,IO_signature_ssgsea.gsva1,file = "expr.IO.signature_gsva_featurecounts.all.CheckRad.Rdata")
+
+```
+ ########## boxplot IO_signature_ssgsea all.CheckRad ##########
+
+```{r}
+load("~/Downloads/multiclass/expr.IO.signature_gsva_featurecounts.all.CheckRad.Rdata")
+Cytolytic.activity$ID<-rownames(Cytolytic.activity)
+Cytolytic.activity<-Cytolytic.activity[,-c(1:2)]
+IO_signature_ssgsea.gsva1$ID<-Cytolytic.activity$ID
+IO_signature_ssgsea<-merge(IO_signature_ssgsea.gsva1,Cytolytic.activity,by="ID")
+colnames(IO_signature_ssgsea)<-c("ID","CD8.T.effector","DNA.damage.repair", "Pan.F.TBRS","Antigen.processing.machinery","Immune.checkpoint","EMT_1",                                           "FGFR3.related.genees","Angiogenesis","Fanconi.anemia", "Cell.cycle","DNA.replication","Nucleotide.excision.repair",
+"Homologous.recombination","Mismatch.repair","EMT2","EMT3","WNT.target","Cell.cycle.regulators","DNA.damage.repair.1",                                              "Follicular.B.cells","GC.B.cells","Plasma.cells","Angiogenesis_Atezo","Teff_Atezo","myeloid.inflammation_Atezo" ,"IFN",                                            "X4.inflammatory.signature", "CD8.T.cell.signature","X10.IFNγ_Pemb","X13.tcell.signature","T.cell.signature","DC1.signature"                                 ,"X4.IFNγ_Durv","Teff.IFNγ.Atezo","X26.JAVELIN_Renal_101.Immuno","JAVELIN_Renal_101.Angiogenesis", "TIL") 
+save(IO_signature_ssgsea,file = "expr.IO.signature_gsva.TIL_featurecounts.all.CheckRad.Rdata")
+```
+
+ ########## boxplot IO_signature_ssgsea phs001623 ##########
+
+```{r}
+load("~/Downloads/multiclass/Cytolytic.activity.tpm.Pphs001623.Rdata")
+load("~/Downloads/multiclass/expr.IO.signature_gsva_tpm.phs001623.Rdata")
+Cytolytic.activity$ID<-rownames(Cytolytic.activity)
+Cytolytic.activity<-Cytolytic.activity[,-c(1:2)]
+IO_signature_ssgsea.gsva1$ID<-Cytolytic.activity$ID
+IO_signature_ssgsea<-merge(IO_signature_ssgsea.gsva1,Cytolytic.activity,by="ID")
+colnames(IO_signature_ssgsea)<-c("ID","CD8.T.effector","DNA.damage.repair", "Pan.F.TBRS","Antigen.processing.machinery","Immune.checkpoint","EMT_1",                                           "FGFR3.related.genees","Angiogenesis","Fanconi.anemia", "Cell.cycle","DNA.replication","Nucleotide.excision.repair",
+"Homologous.recombination","Mismatch.repair","EMT2","EMT3","WNT.target","Cell.cycle.regulators","DNA.damage.repair.1",                                              "Follicular.B.cells","GC.B.cells","Plasma.cells","Angiogenesis_Atezo","Teff_Atezo","myeloid.inflammation_Atezo" ,"IFN",                                            "X4.inflammatory.signature", "CD8.T.cell.signature","X10.IFNγ_Pemb","X13.inflammatory.signature","T.cell.signature","DC1.signature"                                 ,"X4.IFNγ_Durv","Teff.IFNγ.Atezo","X26.JAVELIN_Renal_101.Immuno","JAVELIN_Renal_101.Angiogenesis", "TIL") 
+save(IO_signature_ssgsea,file = "expr.IO.signature_gsva.TIL_phs001623.Rdata")
+```
+
+ ########## boxplot IO_signature_ssgsea PRJNA744780 ##########
+
+```{r}
+load("~/Downloads/multiclass/expr.IO.signature_gsva_featurecounts.tpm.PRJNA744780.Rdata")
+load("~/Downloads/multiclass/Cytolytic.activity.tpm.PRJNA744780.Rdata")
+Cytolytic.activity$ID<-rownames(Cytolytic.activity)
+Cytolytic.activity<-Cytolytic.activity[,-c(1:2)]
+IO_signature_ssgsea.gsva1$ID<-Cytolytic.activity$ID
+IO_signature_ssgsea<-merge(IO_signature_ssgsea.gsva1,Cytolytic.activity,by="ID")
+colnames(IO_signature_ssgsea)<-c("ID","CD8.T.effector","DNA.damage.repair", "Pan.F.TBRS","Antigen.processing.machinery","Immune.checkpoint","EMT_1",                                           "FGFR3.related.genees","Angiogenesis","Fanconi.anemia", "Cell.cycle","DNA.replication","Nucleotide.excision.repair",
+"Homologous.recombination","Mismatch.repair","EMT2","EMT3","WNT.target","Cell.cycle.regulators","DNA.damage.repair.1",                                              "Follicular.B.cells","GC.B.cells","Plasma.cells","Angiogenesis_Atezo","Teff_Atezo","myeloid.inflammation_Atezo" ,"IFN",                                            "X4.inflammatory.signature", "CD8.T.cell.signature","X10.IFNγ_Pemb","X13.inflammatory.signature","T.cell.signature","DC1.signature"                                 ,"X4.IFNγ_Durv","Teff.IFNγ.Atezo","X26.JAVELIN_Renal_101.Immuno","JAVELIN_Renal_101.Angiogenesis", "TIL") 
+save(IO_signature_ssgsea,file = "expr.IO.signature_gsva.TIL_featurecounts.PRJNA744780.Rdata")
+
+```
+###77ts.3.PPR######
+```{r}
+load("~/Downloads/multiclass/clin.77ts.3.PPR.Multiclass.Rdata")
+table(subt$PPR)
+# NPR PCR PPR 
+#  15  42  20 
+subt<-merge(subt,IO_signature_ssgsea,by="ID")
+id.sig<-colnames(subt)[c(82:118)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","PPR",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","PPR","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$PPR<-factor(expr.sig.plot$PPR,levels = c("PCR", "PPR", "NPR"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+expr.sig.plot1<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[1:12],]
+expr.sig.plot2<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[13:24],]
+expr.sig.plot3<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[25:37],]
+p2 <- ggplot(expr.sig.plot1, aes(x=sig, y=score, fill=PPR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for PPR at pretreatment 1.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot2, aes(x=sig, y=score, fill=PPR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for PPR at pretreatment 2.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot3, aes(x=sig, y=score, fill=PPR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for PPR at pretreatment 3.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+###77ts.3.MFP ######
+```{r}
+load("~/Downloads/multiclass/clin.77ts.3.PPR.Multiclass.Rdata")
+table(subt$MFP1)
+# D  F IE 
+# 21 30 26 
+
+subt<-merge(subt,IO_signature_ssgsea,by="ID")
+id.sig<-colnames(subt)[c(82:118)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","MFP1",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","MFP1","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$MFP1<-factor(expr.sig.plot$MFP1,levels = c("IE", "F", "D"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+expr.sig.plot1<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[1:12],]
+expr.sig.plot2<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[13:24],]
+expr.sig.plot3<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[25:37],]
+p2 <- ggplot(expr.sig.plot1, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP1 at pretreatment 1.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot2, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP1 at pretreatment 2.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot3, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP1 at pretreatment 3.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+###77ts.3. cr.MFP######
+```{r}
+load("~/Downloads/multiclass/clin.77ts.3.PPR.Multiclass.Rdata")
+table(subt$cr.MFP)
+# non_pCR.D  non_pCR.F non_pCR.IE      pCR.D      pCR.F     pCR.IE 
+#        13         17          5          8         13         21 
+
+
+subt<-merge(subt,IO_signature_ssgsea,by="ID")
+id.sig<-colnames(subt)[c(82:118)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","cr.MFP",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","cr.MFP","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$cr.MFP<-factor(expr.sig.plot$cr.MFP,levels = c("pCR.IE", "pCR.F", "pCR.D","non_pCR.IE","non_pCR.F","non_pCR.D"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+expr.sig.plot1<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[1:12],]
+expr.sig.plot2<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[13:24],]
+expr.sig.plot3<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[25:37],]
+p2 <- ggplot(expr.sig.plot1, aes(x=sig, y=score, fill=cr.MFP)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for cr.MFP at pretreatment 1.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot2, aes(x=sig, y=score, fill=cr.MFP)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for cr.MFP at pretreatment 2.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot3, aes(x=sig, y=score, fill=cr.MFP)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for cr.MFP at pretreatment 3.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+###32ts.MFP switch resid pre ######
+```{r}
+load("~/Downloads/multiclass/clin.32pts.pre2post.5MFP.pre.Multiclass.Rdata")
+subt<-subt[order(subt$MFP1),]
+subt$Vital_tumor_cluster<-ifelse(subt$`Vital tumor_%.me`==0,"pCR",
+                                 ifelse(subt$`Vital tumor_%.me`=="N/A","N/A",
+                                        ifelse(subt$`Vital tumor_%.me`>0.5,">50",
+                                               ifelse(subt$`Vital tumor_%.me`>0.25,"25_50",
+                                                      ifelse(subt$`Vital tumor_%.me`>0,"<25",subt$`Vital tumor_%.me`)))))
+subt$MFP.post1<-ifelse(subt$MFP.post=="IE/F","IE",subt$MFP.post)
+
+table(subt$MFP1)
+# D2F  D2IE   F2F  F2IE IE2IE 
+#     4     9     8     7     4 
+subt<-merge(subt,IO_signature_ssgsea,by="ID")
+id.sig<-colnames(subt)[c(48:84)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","MFP1",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","MFP1","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$MFP1<-factor(expr.sig.plot$MFP1,levels=c("IE2IE", "F2IE", "D2IE","F2F","D2F"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+expr.sig.plot1<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[1:12],]
+expr.sig.plot2<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[13:24],]
+expr.sig.plot3<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[25:37],]
+p2 <- ggplot(expr.sig.plot1, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP switch resid pre 1.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot2, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP switch resid pre 2.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot3, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP switch resid pre 3.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+
+###32ts.MFP switch resid post ######
+```{r}
+load("~/Downloads/multiclass/clin.32pts.pre2post.5MFP.pre.Multiclass.Rdata")
+subt1<-subt
+load("~/Downloads/multiclass/clin.32pts.pre2post.5MFP.post.Multiclass.Rdata")
+subt<-subt[order(subt$MFP1),]
+subt$Vital_tumor_cluster<-ifelse(subt$`Vital tumor_%.me`==0,"pCR",
+                                 ifelse(subt$`Vital tumor_%.me`=="N/A","N/A",
+                                   ifelse(subt$`Vital tumor_%.me`>0.5,">50",
+                                          ifelse(subt$`Vital tumor_%.me`>0.25,"25_50",
+                                                 ifelse(subt$`Vital tumor_%.me`>0,"<25",subt$`Vital tumor_%.me`)))))
+subt$MFP.post1<-ifelse(subt$MFP.post=="IE/F","IE",subt$MFP.post)
+
+table(subt$MFP1)
+# D2F  D2IE   F2F  F2IE IE2IE 
+#     4     9     8     7     4 
+subt<-merge(subt,IO_signature_ssgsea,by="ID")
+id.sig<-colnames(subt)[c(48:84)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","MFP1",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","MFP1","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$MFP1<-factor(expr.sig.plot$MFP1,levels=c("IE2IE", "F2IE", "D2IE","F2F","D2F"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+expr.sig.plot1<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[1:12],]
+expr.sig.plot2<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[13:24],]
+expr.sig.plot3<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[25:37],]
+p2 <- ggplot(expr.sig.plot1, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP switch resid post 1.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot2, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP switch resid post 2.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot3, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP switch resid post 3.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+###32ts.MFP switch resid post2pre ######
+```{r}
+load("~/Downloads/multiclass/clin.32pts.pre2post.5MFP.pre.Multiclass.Rdata")
+subt1<-subt
+subt1<-merge(subt1,IO_signature_ssgsea,by="ID")
+
+load("~/Downloads/multiclass/clin.32pts.pre2post.5MFP.post.Multiclass.Rdata")
+subt<-subt[order(subt$MFP1),]
+subt$Vital_tumor_cluster<-ifelse(subt$`Vital tumor_%.me`==0,"pCR",
+                                 ifelse(subt$`Vital tumor_%.me`=="N/A","N/A",
+                                   ifelse(subt$`Vital tumor_%.me`>0.5,">50",
+                                          ifelse(subt$`Vital tumor_%.me`>0.25,"25_50",
+                                                 ifelse(subt$`Vital tumor_%.me`>0,"<25",subt$`Vital tumor_%.me`)))))
+subt$MFP.post1<-ifelse(subt$MFP.post=="IE/F","IE",subt$MFP.post)
+
+table(subt$MFP1)
+# D2F  D2IE   F2F  F2IE IE2IE 
+#     4     9     8     7     4 
+subt<-merge(subt,IO_signature_ssgsea,by="ID")
+id.co<-intersect(colnames(subt1),colnames(subt))
+subt1<-subt1[,id.co]
+subt<-subt[,id.co]
+id.sig<-id.co[c(46:82)]
+subt2<-subt
+subt[,id.sig]<-subt2[,id.sig]-subt1[,id.sig]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","MFP1",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","MFP1","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$MFP1<-factor(expr.sig.plot$MFP1,levels=c("IE2IE", "F2IE", "D2IE","F2F","D2F"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+expr.sig.plot1<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[1:12],]
+expr.sig.plot2<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[13:24],]
+expr.sig.plot3<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[25:37],]
+p2 <- ggplot(expr.sig.plot1, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP switch resid post2pre 1.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot2, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP switch resid post2pre 2.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot3, aes(x=sig, y=score, fill=MFP1)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP switch resid post2pre 3.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+
+#### validation phs001623 pre-treat ####
+###phs001623 Pathologic response ######
+```{r}
+# [12] "Pathologic response (Yes/No)"                   
+# [13] "Major pathologic response (Yes/No)"  
+load("~/Downloads/multiclass/expr.IO.signature_gsva.TIL_phs001623.Rdata")
+load("~/Downloads/phs001623/pre.phs001623_id.clin.MFP.rdata")
+pre.phs001623_id.clin.MFP1<-pre.phs001623_id.clin.MFP1[!(pre.phs001623_id.clin.MFP1$SampleName=="20_baseline_tumor_rna_d0"),]
+subt<-merge(pre.phs001623_id.clin.MFP1,IO_signature_ssgsea,by.x ="Sample",by.y ="ID")
+colnames(subt)[12:13]<-c("PR","MPR")
+table(subt$PR)
+# No Yes 
+#   6  10 
+id.sig<-colnames(subt)[c(76:112)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("Sample","PR",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("Sample","PR","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$PR<-factor(expr.sig.plot$PR,levels = c("Yes", "No"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+expr.sig.plot1<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[1:12],]
+expr.sig.plot2<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[13:24],]
+expr.sig.plot3<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[25:37],]
+p2 <- ggplot(expr.sig.plot1, aes(x=sig, y=score, fill=PR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for PR at pretreatment phs001623 1.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot2, aes(x=sig, y=score, fill=PR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for PR at pretreatment phs001623 2.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot3, aes(x=sig, y=score, fill=PR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for PR at pretreatment phs001623 3.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+
+###phs001623 Major pathologic response ######
+```{r}
+# [12] "Pathologic response (Yes/No)"                   
+# [13] "Major pathologic response (Yes/No)"  
+load("~/Downloads/multiclass/expr.IO.signature_gsva.TIL_phs001623.Rdata")
+load("~/Downloads/phs001623/pre.phs001623_id.clin.MFP.rdata")
+pre.phs001623_id.clin.MFP1<-pre.phs001623_id.clin.MFP1[!(pre.phs001623_id.clin.MFP1$SampleName=="20_baseline_tumor_rna_d0"),]
+subt<-merge(pre.phs001623_id.clin.MFP1,IO_signature_ssgsea,by.x ="Sample",by.y ="ID")
+colnames(subt)[12:13]<-c("PR","MPR")
+table(subt$MPR)
+# No Yes 
+#   12  4 
+id.sig<-colnames(subt)[c(76:112)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("Sample","MPR",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("Sample","MPR","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$MPR<-factor(expr.sig.plot$MPR,levels = c("Yes", "No"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+expr.sig.plot1<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[1:12],]
+expr.sig.plot2<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[13:24],]
+expr.sig.plot3<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[25:37],]
+p2 <- ggplot(expr.sig.plot1, aes(x=sig, y=score, fill=MPR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MPR at pretreatment phs001623 1.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot2, aes(x=sig, y=score, fill=MPR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MPR at pretreatment phs001623 2.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot3, aes(x=sig, y=score, fill=MPR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MPR at pretreatment phs001623 3.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+
+###phs001623 Pathologic response ######
+```{r}
+# [12] "Pathologic response (Yes/No)"                   
+# [13] "Major pathologic response (Yes/No)"  
+load("~/Downloads/multiclass/expr.IO.signature_gsva.TIL_phs001623.Rdata")
+load("~/Downloads/phs001623/pre.phs001623_id.clin.MFP.rdata")
+pre.phs001623_id.clin.MFP1<-pre.phs001623_id.clin.MFP1[!(pre.phs001623_id.clin.MFP1$SampleName=="20_baseline_tumor_rna_d0"),]
+subt<-merge(pre.phs001623_id.clin.MFP1,IO_signature_ssgsea,by.x ="Sample",by.y ="ID")
+colnames(subt)[12:13]<-c("PR","MPR")
+table(subt$PPR)
+# No Yes 
+#   6  10 
+id.sig<-colnames(subt)[c(76:112)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("Sample","PPR",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("Sample","PPR","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$PPR<-factor(expr.sig.plot$PPR,levels = c("PCR", "PPR","NPR"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+expr.sig.plot1<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[1:12],]
+expr.sig.plot2<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[13:24],]
+expr.sig.plot3<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[25:37],]
+p2 <- ggplot(expr.sig.plot1, aes(x=sig, y=score, fill=PPR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for PPR at pretreatment phs001623 1.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot2, aes(x=sig, y=score, fill=PPR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for PPR at pretreatment phs001623 2.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot3, aes(x=sig, y=score, fill=PPR)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for PPR at pretreatment phs001623 3.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+#### validation phs001623 switch ####
+
+```{r}
+ 
+load("~/Downloads/multiclass/expr.IO.signature_gsva.TIL_phs001623.Rdata")
+load("~/Downloads/phs001623/pre.phs001623_id.clin.MFP.rdata")
+pre.phs001623_id.clin.MFP1<-pre.phs001623_id.clin.MFP1[!(pre.phs001623_id.clin.MFP1$SampleName=="20_baseline_tumor_rna_d0"),]
+subt<-merge(pre.phs001623_id.clin.MFP1,IO_signature_ssgsea,by.x ="Sample",by.y ="ID")
+colnames(subt)[12:13]<-c("PR","MPR")
+table(subt$cluster.swith)
+ # D2D   D2F  D2IE   F2F  IE2F IE2IE 
+ #    2     3     3     2     1     5 
+subt$switch<-subt$cluster.swith
+id.sig<-colnames(subt)[c(76:112)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("Sample","switch",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("Sample","switch","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$switch<-factor(expr.sig.plot$switch,levels = c("IE2IE", "D2IE","IE2F", "F2F","D2F", "D2D"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+expr.sig.plot1<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[1:12],]
+expr.sig.plot2<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[13:24],]
+expr.sig.plot3<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[25:37],]
+p2 <- ggplot(expr.sig.plot1, aes(x=sig, y=score, fill=switch)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for switch phs001623 1.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot2, aes(x=sig, y=score, fill=switch)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for switch phs001623 2.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot3, aes(x=sig, y=score, fill=switch)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for switch phs001623 3.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+#### validation PRJNA744780 pre-treat ####
+###PRJNA744780 Pathologic response pre-treat######
+```{r}
+load("~/Downloads/multiclass/expr.IO.signature_gsva.TIL_featurecounts.PRJNA744780.Rdata")
+load("~/Downloads/multiclass/PRJNA744780_clin.all.Rdata")
+subt<-merge(PRJNA744780_clin.all,IO_signature_ssgsea,by.x ="run_accession",by.y ="ID")
+table(subt$pre)
+ # Post   Pre Recur 
+ #   10     7     1 
+subt<-subt[subt$pre=="Pre",]
+table(subt$Outcome)
+# Progressor  Responder     Stable 
+#          3          2          2 
+subt$clin.repsonse<-ifelse(subt$Outcome=="Progressor","N","Y")
+id.sig<-colnames(subt)[c(24:60)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","clin.repsonse",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","clin.repsonse","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$clin.repsonse<-factor(expr.sig.plot$clin.repsonse,levels = c("Y", "N"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+expr.sig.plot1<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[1:12],]
+expr.sig.plot2<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[13:24],]
+expr.sig.plot3<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[25:37],]
+p2 <- ggplot(expr.sig.plot1, aes(x=sig, y=score, fill=clin.repsonse)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for clin.repsonse at pretreatment PRJNA744780 1.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot2, aes(x=sig, y=score, fill=clin.repsonse)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for clin.repsonse at pretreatment PRJNA744780 2.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot3, aes(x=sig, y=score, fill=clin.repsonse)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for clin.repsonse at pretreatment PRJNA744780 3.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```
+
+###PRJNA744780 MFP switch Pathologic response pre######
+```{r}
+load("~/Downloads/multiclass/expr.IO.signature_gsva.TIL_featurecounts.PRJNA744780.Rdata")
+load("~/Downloads/multiclass/PRJNA744780_clin.all.Rdata")
+subt<-merge(PRJNA744780_clin.all,IO_signature_ssgsea,by.x ="run_accession",by.y ="ID")
+table(subt$pre)
+ # Post   Pre Recur 
+ #   10     7     1 
+subt1<-subt[subt$pre=="Pre",]
+
+subt2<-subt[subt$pre=="Post",]
+subt2<-subt2[subt2$ID %in% subt1$ID,]
+subt1$MFP.pre<-subt1$MFP
+subt1$MFP.post<-subt2$MFP
+# table(subt1$MFP.pre)
+# 
+#    F   IE IE/F 
+#    3    3    1 
+table(subt1$MFP.pre,subt1$MFP.post)
+  #      D F IE IE/F
+  # F    1 1  0    1
+  # IE   0 0  2    1
+  # IE/F 0 0  0    1
+
+subt1$switch<-ifelse(subt1$MFP.pre=="F" & subt1$MFP.post=="D","F2D",
+                     ifelse(subt1$MFP.pre=="F" & subt1$MFP.post=="F","F2F",ifelse(subt1$MFP.pre=="F" & subt1$MFP.post=="IE/F","F2IE",ifelse(subt1$MFP.pre=="IE" & subt1$MFP.post=="IE","IE2IE",ifelse(subt1$MFP.pre=="IE" & subt1$MFP.post=="IE/F","IE2IE",ifelse(subt1$MFP.pre=="IE/F" & subt1$MFP.post=="IE/F","IE2IE","N"))))))
+# table(subt1$switch)
+# 
+#   F2D   F2F  F2IE IE2IE 
+#     1     1     1     4 
+subt<-subt1
+subt$clin.repsonse<-ifelse(subt$Outcome=="Progressor","N","Y")
+id.sig<-colnames(subt)[c(24:60)]
+# make sure id.sig in signature
+id.sig<-id.sig[id.sig %in% colnames(subt)]
+expr.sig.plot<-NULL
+for (i in 1:length(id.sig)) {
+  marker<-id.sig[i]
+  expr.sig.plot1<-subt[,c("ID","switch",marker)]
+  expr.sig.plot1$sig<-marker
+  expr.sig.plot1<-data.frame(expr.sig.plot1)
+  colnames(expr.sig.plot1)<-c("ID","switch","score","sig")
+  expr.sig.plot<-rbind(expr.sig.plot,expr.sig.plot1)
+}
+rm(expr.sig.plot1)
+expr.sig.plot$score<-as.numeric(expr.sig.plot$score)
+expr.sig.plot$switch<-factor(expr.sig.plot$switch,levels = c("F2D", "F2F","F2IE","IE2IE"))
+
+library(ggsignif)
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+
+# library
+library(ggplot2)
+
+# one box per sig
+expr.sig.plot1<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[1:12],]
+expr.sig.plot2<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[13:24],]
+expr.sig.plot3<-expr.sig.plot[expr.sig.plot$sig %in% id.sig[25:37],]
+p2 <- ggplot(expr.sig.plot1, aes(x=sig, y=score, fill=switch)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP Switch PRJNA744780 pre 1.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot2, aes(x=sig, y=score, fill=switch)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP Switch PRJNA744780 pre 2.pdf", width = 12, height = 12)
+p2 <- ggplot(expr.sig.plot3, aes(x=sig, y=score, fill=switch)) + 
+  geom_boxplot() + 
+  stat_compare_means() +
+  facet_wrap(~sig, scale="free")
+ggsave(p2, filename = "IO signatutres for MFP Switch PRJNA744780 pre 3.pdf", width = 12, height = 12)
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/76-add-p-values-and-significance-levels-to-ggplots/
+```

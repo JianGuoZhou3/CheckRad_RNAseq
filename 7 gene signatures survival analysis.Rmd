@@ -1,0 +1,320 @@
+---
+title: "survival analysis signatures"
+author: "Jian-Guo Zhou"
+date: "2023-11-23"
+output:
+  word_document: default
+  html_document: default
+---
+
+
+## prepare data
+
+save your dataset as data = cbind(clin, expreset[, num]) ,in your clin set OS or PFS as times, OS.censors as status
+expreset is your gene，lncRNA or signatures
+(Intercept)      CARD10         CD4         CD6        CD84       LAIR1        LYL1      MYBPC1 
+-0.15086490 -0.43384879  0.11956309  0.16416372  0.07973315  0.21772979  0.00450592  0.78070412 
+# TCGA
+```{r cars}
+# rm(list=ls())
+library(survival)
+library(survminer)
+library(stringr)
+gene_id<-c("CARD10","CD4","CD6","CD84","LAIR1","LYL1","MYBPC1")
+load("~/Downloads/HNSC_ICI/mat_tpm.norm_TCGA_HNSCC.Rdata")
+load("~/Downloads/HNSC_ICI/TCGA_HNSCC.clin.Rdata")
+mat_tpm.norm_TCGA_HNSCC<-mat_tpm.norm_TCGA_HNSCC[,order(colnames(mat_tpm.norm_TCGA_HNSCC))]
+mat_tpm.norm_TCGA_HNSCC1<-data.frame(t(mat_tpm.norm_TCGA_HNSCC))
+mat_tpm.norm_TCGA_HNSCC1<-mat_tpm.norm_TCGA_HNSCC1[,colnames(mat_tpm.norm_TCGA_HNSCC1) %in% gene_id]
+mat_tpm.norm_TCGA_HNSCC1$ID<-substr(rownames(mat_tpm.norm_TCGA_HNSCC1),1,12)
+mat_tpm.norm_TCGA_HNSCC1<-mat_tpm.norm_TCGA_HNSCC1[mat_tpm.norm_TCGA_HNSCC1$ID %in% TCGA_HNSCC.clin$bcr_patient_barcode,]
+TCGA_HNSCC.clin<-TCGA_HNSCC.clin[TCGA_HNSCC.clin$bcr_patient_barcode %in% mat_tpm.norm_TCGA_HNSCC1$ID,]
+TCGA_HNSCC.clin<-TCGA_HNSCC.clin[order(TCGA_HNSCC.clin$bcr_patient_barcode),]
+TCGA_HNSCC.clin<-merge(TCGA_HNSCC.clin,mat_tpm.norm_TCGA_HNSCC1,by.x = "bcr_patient_barcode",by.y ="ID")
+TCGA_HNSCC.clin$score<-TCGA_HNSCC.clin$CD4*0.11956309+TCGA_HNSCC.clin$CD6*0.16416372+TCGA_HNSCC.clin$CD84*0.07973315-
+  TCGA_HNSCC.clin$CARD10*0.43384879+TCGA_HNSCC.clin$LYL1*0.21772979+TCGA_HNSCC.clin$LAIR1*0.00450592+
+  TCGA_HNSCC.clin$MYBPC1*0.78070412
+TCGA_HNSCC.clin$risk<-ifelse(TCGA_HNSCC.clin$score>median(TCGA_HNSCC.clin$score),1,0)
+  
+ ###Clin PFS
+clin<-TCGA_HNSCC.clin
+clin<-clin[!is.na(clin$PFI.time),]
+clin<-clin[!is.na(clin$PFI),]
+clin<-clin[!is.na(clin$OS.time),]
+clin<-clin[!is.na(clin$OS),]
+
+clin$times<-as.numeric(clin$PFI.time)*12/365
+clin$status<-as.numeric(clin$PFI)
+#a 训练集生存分析
+res.cut<-surv_cutpoint(clin,time = "times",event = "status",variables = "score")
+res.cat<-surv_categorize(res.cut)
+  Sur <- Surv(clin$times,clin$status)
+  sfit <- survfit(Surv(times,status) ~ score,data=res.cat)  
+  sfit
+  sfit1 <- coxph(Surv(times,status) ~ score,data=res.cat) 
+  summary(sfit1)
+  ggsurvplot1 <- ggsurvplot(sfit, 
+                            conf.int=F, #置信区间
+                            #fun="pct",
+                            pval=TRUE,
+                            palette = "jama",
+                            pval.method = T,
+                            risk.table =T, 
+                            ncensor.plot = T,
+                            surv.median.line="hv",
+                            legend.labs=c("high score","low score")
+  )+
+    labs(x = "Month")
+  pdf(file = paste0("PFS_TCGA_HNSC_pCR.7.gene.pdf"),   # The directory you want to save the file in
+      width = 7, # The width of the plot in inches
+      height = 7) # The height of the plot in inches
+  print(ggsurvplot1,newpage = FALSE)
+  # local advanced stage??
+  ###Clin OS
+res.cat$times<-as.numeric(clin$OS.time)*12/365
+res.cat$status<-as.numeric(clin$OS)
+#a 训练集生存分析
+# res.cut<-surv_cutpoint(clin,time = "times",event = "status",variables = "score")
+# res.cat<-surv_categorize(res.cut)
+  sfit <- survfit(Surv(times,status) ~ score,data=res.cat)  
+  sfit
+  sfit1 <- coxph(Surv(times,status) ~ score,data=res.cat) 
+  summary(sfit1)
+  ggsurvplot1 <- ggsurvplot(sfit, 
+                            conf.int=F, #置信区间
+                            #fun="pct",
+                            pval=TRUE,
+                            palette = "jama",
+                            pval.method = T,
+                            risk.table =T, 
+                            ncensor.plot = T,
+                            surv.median.line="hv",
+                            legend.labs=c("high score","low score")
+  )+
+    labs(x = "Month")
+  pdf(file = paste0("OS_TCGA_HNSC_pCR.7.gene.pdf"),   # The directory you want to save the file in
+      width = 7, # The width of the plot in inches
+      height = 7) # The height of the plot in inches
+  print(ggsurvplot1,newpage = FALSE)
+  dev.off()
+```
+# CPTAC
+```{r cars}
+load("~/Downloads/HNSC_ICI/CPTAC_HNSCC.clin.Rdata")
+load("~/Downloads/HNSC_ICI/mat_tpm.norm_CPTAC_HNSCC.Rdata")
+mat_tpm.norm_CPTAC_HNSCC<-mat_tpm.norm_CPTAC_HNSCC[,order(colnames(mat_tpm.norm_CPTAC_HNSCC))]
+mat_tpm.norm_CPTAC_HNSCC1<-data.frame(t(mat_tpm.norm_CPTAC_HNSCC))
+mat_tpm.norm_CPTAC_HNSCC1<-mat_tpm.norm_CPTAC_HNSCC1[,colnames(mat_tpm.norm_CPTAC_HNSCC1) %in% gene_id]
+mat_tpm.norm_CPTAC_HNSCC1$ID<-rownames(mat_tpm.norm_CPTAC_HNSCC1)
+mat_tpm.norm_CPTAC_HNSCC1<-mat_tpm.norm_CPTAC_HNSCC1[mat_tpm.norm_CPTAC_HNSCC1$ID %in% CPTAC_HNSCC.clin$id,]
+CPTAC_HNSCC.clin<-CPTAC_HNSCC.clin[CPTAC_HNSCC.clin$id %in% mat_tpm.norm_CPTAC_HNSCC1$ID,]
+CPTAC_HNSCC.clin<-CPTAC_HNSCC.clin[order(CPTAC_HNSCC.clin$id),]
+CPTAC_HNSCC.clin<-merge(CPTAC_HNSCC.clin,mat_tpm.norm_CPTAC_HNSCC1,by.x = "id",by.y ="ID")
+CPTAC_HNSCC.clin$score<-CPTAC_HNSCC.clin$CD4*0.11956309+CPTAC_HNSCC.clin$CD6*0.16416372+CPTAC_HNSCC.clin$CD84*0.07973315-
+  CPTAC_HNSCC.clin$CARD10*0.43384879+CPTAC_HNSCC.clin$LYL1*0.21772979+CPTAC_HNSCC.clin$LAIR1*0.00450592+
+  CPTAC_HNSCC.clin$MYBPC1*0.78070412
+ ###Clin PFS
+clin<-CPTAC_HNSCC.clin
+clin<-clin[!is.na(clin$PFS_days),]
+clin<-clin[!is.na(clin$PFS_event),]
+clin<-clin[!is.na(clin$OS_days),]
+clin<-clin[!is.na(clin$OS_event),]
+clin$times<-as.numeric(clin$PFS_days)*12/365
+clin$status<-as.numeric(clin$PFS_event)
+#a 训练集生存分析
+res.cut<-surv_cutpoint(clin,time = "times",event = "status",variables = "score")
+res.cat<-surv_categorize(res.cut)
+  Sur <- Surv(clin$times,clin$status)
+  sfit <- survfit(Surv(times,status) ~ score,data=res.cat) 
+    sfit
+  sfit1 <- coxph(Surv(times,status) ~ score,data=res.cat) 
+  summary(sfit1)
+  ggsurvplot1 <- ggsurvplot(sfit, 
+                            conf.int=F, #置信区间
+                            #fun="pct",
+                            pval=TRUE,
+                            palette = "jama",
+                            pval.method = T,
+                            risk.table =T, 
+                            ncensor.plot = T,
+                            surv.median.line="hv",
+                            legend.labs=c("high score","low score")
+  )+
+    labs(x = "Month")
+  pdf(file = paste0("PFS_CPTAC_HNSC_pCR.7.gene.pdf"),   # The directory you want to save the file in
+      width = 7, # The width of the plot in inches
+      height = 7) # The height of the plot in inches
+  print(ggsurvplot1,newpage = FALSE)
+  # local advanced stage??
+  ###Clin OS
+res.cat$times<-as.numeric(clin$OS_days)*12/365
+res.cat$status<-as.numeric(clin$OS_event)
+  sfit <- survfit(Surv(times,status) ~ score,data=res.cat)  
+    sfit
+  sfit1 <- coxph(Surv(times,status) ~ score,data=res.cat) 
+  summary(sfit1)
+  ggsurvplot1 <- ggsurvplot(sfit, 
+                            conf.int=F, #置信区间
+                            #fun="pct",
+                            pval=TRUE,
+                            palette = "jama",
+                            pval.method = T,
+                            risk.table =T, 
+                            ncensor.plot = T,
+                            surv.median.line="hv",
+                            legend.labs=c("high score","low score")
+  )+
+    labs(x = "Month")
+  pdf(file = paste0("OS_CPTAC_HNSC_pCR.7.gene.pdf"),   # The directory you want to save the file in
+      width = 7, # The width of the plot in inches
+      height = 7) # The height of the plot in inches
+  print(ggsurvplot1,newpage = FALSE)
+  dev.off()
+  
+```
+# GSE112026 DFS
+```{r cars}
+# rm(list=ls())
+load("~/Downloads/HNSC_ICI/GSE112026_HPVOP_RSEMNorm.Rdata")
+load("~/Downloads/HNSC_ICI/GSE112026.clin.Rdata")
+GSE112026_HPVOP_RSEMNorm<-GSE112026_HPVOP_RSEMNorm[,order(colnames(GSE112026_HPVOP_RSEMNorm))]
+GSE112026_HPVOP_RSEMNorm1<-data.frame(t(GSE112026_HPVOP_RSEMNorm))
+GSE112026_HPVOP_RSEMNorm1<-GSE112026_HPVOP_RSEMNorm1[,colnames(GSE112026_HPVOP_RSEMNorm1) %in% gene_id]
+GSE112026_HPVOP_RSEMNorm1$ID<-rownames(GSE112026_HPVOP_RSEMNorm1)
+GSE112026.clin$id<-str_replace_all(GSE112026.clin$source_name_ch1,"-",".")
+GSE112026_HPVOP_RSEMNorm1<-GSE112026_HPVOP_RSEMNorm1[GSE112026_HPVOP_RSEMNorm1$ID %in% GSE112026.clin$id,]
+GSE112026.clin<-GSE112026.clin[GSE112026.clin$id %in% GSE112026_HPVOP_RSEMNorm1$ID,]
+GSE112026.clin<-GSE112026.clin[order(GSE112026.clin$id),]
+GSE112026.clin<-merge(GSE112026.clin,GSE112026_HPVOP_RSEMNorm1,by.x = "id",by.y ="ID")
+GSE112026.clin$score<-GSE112026.clin$CD4*0.11956309+GSE112026.clin$CD6*0.16416372+GSE112026.clin$CD84*0.07973315-
+  GSE112026.clin$CARD10*0.43384879+GSE112026.clin$LYL1*0.21772979+GSE112026.clin$LAIR1*0.00450592+
+  GSE112026.clin$MYBPC1*0.78070412
+# table(clin$`disease status at last clinical followup:ch1`)
+# 
+# AWD DUC  NA NED 
+#   9   1  29  37 
+# NED: no evidence of disease,NED-II: no evidence of disease after recurrence, AWD: Alive with disease, DOD: died of disease, 
+###Clin DFS
+clin<-GSE112026.clin
+clin$times<-as.numeric(clin$`time to death or follow-up if alive (months):ch1`)
+clin$status<-as.numeric(ifelse(clin$`disease status at last clinical followup:ch1`=="NED",0,1))
+clin<-clin[!is.na(clin$times),]
+clin<-clin[!is.na(clin$status),]
+#a 训练集生存分析
+res.cut<-surv_cutpoint(clin,time = "times",event = "status",variables = "score")
+res.cat<-surv_categorize(res.cut)
+  Sur <- Surv(clin$times,clin$status)
+  sfit <- survfit(Surv(times,status) ~ score,data=res.cat)  
+    sfit
+  sfit1 <- coxph(Surv(times,status) ~ score,data=res.cat) 
+  summary(sfit1)
+  ggsurvplot1 <- ggsurvplot(sfit, 
+                            conf.int=F, #置信区间
+                            #fun="pct",
+                            pval=TRUE,
+                            palette = "jama",
+                            pval.method = T,
+                            risk.table =T, 
+                            ncensor.plot = T,
+                            surv.median.line="hv",
+                            legend.labs=c("high score","low score")
+  )+
+    labs(x = "Month")
+  pdf(file = paste0("DFS_GSE112026_pCR.7.gene.pdf"),   # The directory you want to save the file in
+      width = 7, # The width of the plot in inches
+      height = 7) # The height of the plot in inches
+  print(ggsurvplot1,newpage = FALSE)
+  # local advanced stage??
+  
+```
+
+# GSE41613 OS CSS 
+```{r cars}
+# rm(list=ls())
+load("~/Downloads/HNSC_ICI/GSE41613.count.Rdata")
+load("~/Downloads/HNSC_ICI/GSE41613.clin.Rdata")
+GSE41613.count<-GSE41613.count[,order(colnames(GSE41613.count))]
+GSE41613.count1<-data.frame(t(GSE41613.count))
+GSE41613.count1<-GSE41613.count1[,colnames(GSE41613.count1) %in% gene_id]
+GSE41613.count1$ID<-rownames(GSE41613.count1)
+GSE41613.clin$id<-GSE41613.clin$geo_accession
+GSE41613.count1<-GSE41613.count1[GSE41613.count1$ID %in% GSE41613.clin$id,]
+GSE41613.clin<-GSE41613.clin[GSE41613.clin$id %in% GSE41613.count1$ID,]
+GSE41613.clin<-GSE41613.clin[order(GSE41613.clin$id),]
+GSE41613.clin<-merge(GSE41613.clin,GSE41613.count1,by.x = "id",by.y ="ID")
+GSE41613.clin$score<-GSE41613.clin$CD4*0.11956309+GSE41613.clin$CD6*0.16416372+GSE41613.clin$CD84*0.07973315-
+  GSE41613.clin$CARD10*0.43384879+GSE41613.clin$LYL1*0.21772979+GSE41613.clin$LAIR1*0.00450592+
+  GSE41613.clin$MYBPC1*0.78070412
+# table(clin$`vital:ch1`)
+# 
+#           Alive Dead -unk cause     Dead-non OC    Dead-oral ca 
+#              46               7              14              30 
+
+###Clin CSS
+clin<-GSE41613.clin
+clin<-clin[!is.na(as.numeric(clin$`fu time:ch1`)),]
+clin<-clin[!is.na(as.numeric(ifelse(clin$`vital:ch1`=="Dead-oral ca",1,0))),]
+clin$times<-as.numeric(clin$`fu time:ch1`)
+clin$status<-as.numeric(ifelse(clin$`vital:ch1`=="Dead-oral ca",1,0))
+#a 训练集生存分析
+res.cut<-surv_cutpoint(clin,time = "times",event = "status",variables = "score")
+res.cat<-surv_categorize(res.cut)
+  Sur <- Surv(clin$times,clin$status)
+  sfit <- survfit(Surv(times,status) ~ score,data=res.cat)  
+    sfit
+  sfit1 <- coxph(Surv(times,status) ~ score,data=res.cat) 
+  summary(sfit1)
+  ggsurvplot1 <- ggsurvplot(sfit, 
+                            conf.int=F, #置信区间
+                            #fun="pct",
+                            pval=TRUE,
+                            palette = "jama",
+                            pval.method = T,
+                            risk.table =T, 
+                            ncensor.plot = T,
+                            surv.median.line="hv",
+                            legend.labs=c("high score","low score")
+  )+
+    labs(x = "Month")
+  pdf(file = paste0("CSS_GSE41613_pCR.7.gene.pdf"),   # The directory you want to save the file in
+      width = 7, # The width of the plot in inches
+      height = 7) # The height of the plot in inches
+  print(ggsurvplot1,newpage = FALSE)
+  # local advanced stage??
+###Clin OS
+res.cat$times<-as.numeric(clin$`fu time:ch1`)
+res.cat$status<-as.numeric(ifelse(clin$`vital:ch1`=="Alive",0,1))
+#a 训练集生存分析
+# res.cut<-surv_cutpoint(clin,time = "times",event = "status",variables = "score")
+# res.cat<-surv_categorize(res.cut)
+  sfit <- survfit(Surv(times,status) ~ score,data=res.cat)  
+    sfit
+  sfit1 <- coxph(Surv(times,status) ~ score,data=res.cat) 
+  summary(sfit1)
+  ggsurvplot1 <- ggsurvplot(sfit, 
+                            conf.int=F, #置信区间
+                            #fun="pct",
+                            pval=TRUE,
+                            palette = "jama",
+                            pval.method = T,
+                            risk.table =T, 
+                            ncensor.plot = T,
+                            surv.median.line="hv",
+                            legend.labs=c("high score","low score")
+  )+
+    labs(x = "Month")
+  pdf(file = paste0("OS_GSE41613_pCR.7.gene.pdf"),   # The directory you want to save the file in
+      width = 7, # The width of the plot in inches
+      height = 7) # The height of the plot in inches
+  print(ggsurvplot1,newpage = FALSE)
+  dev.off()
+
+```
+
+
+
+## sessionInfo
+
+```{r cars}
+sessionInfo
+```
